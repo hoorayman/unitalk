@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 )
@@ -15,6 +16,9 @@ func main() {
 	go wsServer.Run()
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		room := query.Get("room")
+		fmt.Println(room)
 		ServeWs(wsServer, w, r)
 	})
 
