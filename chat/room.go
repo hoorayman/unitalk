@@ -54,3 +54,8 @@ func (room *Room) broadcastToClientsInRoom(message []byte) {
 func (room *Room) GetName() string {
 	return room.name
 }
+
+// TriggerRegisterClientInRoome method
+func (room *Room) TriggerRegisterClientInRoome(client *Client) {
+	room.register <- client
+}

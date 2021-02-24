@@ -12,7 +12,8 @@ func NewWebsocketServer() *WsServer {
 	}
 }
 
-func (server *WsServer) findRoomByName(name string) *Room {
+// FindRoomByName method
+func (server *WsServer) FindRoomByName(name string) *Room {
 	for room := range server.rooms {
 		if room.GetName() == name {
 			return room
@@ -21,7 +22,8 @@ func (server *WsServer) findRoomByName(name string) *Room {
 	return nil
 }
 
-func (server *WsServer) createRoom(name string) *Room {
+// CreateRoom method
+func (server *WsServer) CreateRoom(name string) *Room {
 	room := NewRoom(name)
 	go room.RunRoom()
 	server.rooms[room] = true

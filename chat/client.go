@@ -1,11 +1,11 @@
 package chat
 
 import (
-	"log"
-	"net/http"
 	"time"
+	"unitalk/logger"
 
 	"github.com/gorilla/websocket"
+	"go.uber.org/zap"
 )
 
 const (
@@ -24,11 +24,6 @@ var (
 	space   = []byte{' '}
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  4096,
-	WriteBufferSize: 4096,
-}
-
 // Client represents the websocket client at the server
 type Client struct {
 	// The actual websocket connection.
@@ -37,7 +32,8 @@ type Client struct {
 	send chan []byte
 }
 
-func newClient(conn *websocket.Conn, room *Room) *Client {
+// NewClient constructor
+func NewClient(conn *websocket.Conn, room *Room) *Client {
 	return &Client{
 		conn: conn,
 		room: room,
@@ -45,7 +41,8 @@ func newClient(conn *websocket.Conn, room *Room) *Client {
 	}
 }
 
-func (client *Client) readPump() {
+// ReadPump method
+func (client *Client) ReadPump() {
 	defer func() {
 		client.disconnect()
 	}()
@@ -59,7 +56,7 @@ func (client *Client) readPump() {
 		_, message, err := client.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("unexpected close error: %v", err)
+				logger.Writer.Error(err.Error(), zap.String("ws", "unexpected close error"))
 			}
 			break
 		}
@@ -67,7 +64,8 @@ func (client *Client) readPump() {
 	}
 }
 
-func (client *Client) writePump() {
+// WritePump method
+func (client *Client) WritePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
@@ -112,31 +110,4 @@ func (client *Client) disconnect() {
 	client.room.unregister <- client
 	close(client.send)
 	client.conn.Close()
-}
-
-// ServeWs handles websocket requests from clients requests.
-func ServeWs(wsServer *WsServer, w http.ResponseWriter, r *http.Request) {
-	roomName := r.URL.Query().Get("room")
-	if roomName == "" {
-		roomName = "default"
-	}
-
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	var room *Room
-	room = wsServer.findRoomByName(roomName)
-	if room == nil {
-		room = wsServer.createRoom(roomName)
-	}
-
-	client := newClient(conn, room)
-
-	go client.writePump()
-	go client.readPump()
-
-	room.register <- client
 }

@@ -2,9 +2,8 @@ body,
 html {
   height: 100%;
   margin: 0;
-  background: #0310EA;
+  background: #00000080;
   background: -webkit-linear-gradient(to right, #560A86, #7122FA, #560A86);
-  background: linear-gradient(to right, #560A86, #7122FA, #560A86);
 }
 
 #app{
