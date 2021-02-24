@@ -6,7 +6,7 @@ type Room struct {
 	clients    map[*Client]bool
 	register   chan *Client
 	unregister chan *Client
-	broadcast  chan *Message
+	broadcast  chan []byte
 }
 
 // NewRoom creates a new Room
@@ -16,7 +16,7 @@ func NewRoom(name string) *Room {
 		clients:    make(map[*Client]bool),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
-		broadcast:  make(chan *Message),
+		broadcast:  make(chan []byte),
 	}
 }
 
@@ -48,4 +48,9 @@ func (room *Room) broadcastToClientsInRoom(message []byte) {
 	for client := range room.clients {
 		client.send <- message
 	}
+}
+
+// GetName method
+func (room *Room) GetName() string {
+	return room.name
 }

@@ -35,18 +35,17 @@ var upgrader = websocket.Upgrader{
 // Client represents the websocket client at the server
 type Client struct {
 	// The actual websocket connection.
-	conn     *websocket.Conn
-	wsServer *WsServer
-	send     chan []byte
+	conn *websocket.Conn
+	room *Room
+	send chan []byte
 }
 
-func newClient(conn *websocket.Conn, wsServer *WsServer) *Client {
+func newClient(conn *websocket.Conn, room *Room) *Client {
 	return &Client{
-		conn:     conn,
-		wsServer: wsServer,
-		send:     make(chan []byte, 256),
+		conn: conn,
+		room: room,
+		send: make(chan []byte, 256),
 	}
-
 }
 
 func (client *Client) readPump() {
@@ -60,17 +59,15 @@ func (client *Client) readPump() {
 
 	// Start endless read loop, waiting for messages from client
 	for {
-		_, jsonMessage, err := client.conn.ReadMessage()
+		_, message, err := client.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("unexpected close error: %v", err)
 			}
 			break
 		}
-
-		client.wsServer.broadcast <- jsonMessage
+		client.room.broadcast <- message
 	}
-
 }
 
 func (client *Client) writePump() {
@@ -84,7 +81,7 @@ func (client *Client) writePump() {
 		case message, ok := <-client.send:
 			client.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
-				// The WsServer closed the channel.
+				// The room closed the channel.
 				client.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
@@ -115,13 +112,17 @@ func (client *Client) writePump() {
 }
 
 func (client *Client) disconnect() {
-	client.wsServer.unregister <- client
+	client.room.unregister <- client
 	close(client.send)
 	client.conn.Close()
 }
 
 // ServeWs handles websocket requests from clients requests.
 func ServeWs(wsServer *WsServer, w http.ResponseWriter, r *http.Request) {
+	roomName := r.URL.Query().Get("room")
+	if roomName == "" {
+		roomName = "default"
+	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -129,10 +130,16 @@ func ServeWs(wsServer *WsServer, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := newClient(conn, wsServer)
+	var room *Room
+	room = wsServer.findRoomByName(roomName)
+	if room == nil {
+		room = wsServer.createRoom(roomName)
+	}
+
+	client := newClient(conn, room)
 
 	go client.writePump()
 	go client.readPump()
 
-	wsServer.register <- client
+	room.register <- client
 }
