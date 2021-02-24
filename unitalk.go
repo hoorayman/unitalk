@@ -1,19 +1,20 @@
 package main
 
 import (
-	"log"
 	"net/http"
+	"unitalk/chat"
+	"unitalk/config"
 )
 
 func main() {
-	wsServer := NewWebsocketServer()
+	wsServer := chat.NewWebsocketServer()
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		ServeWs(wsServer, w, r)
+		chat.ServeWs(wsServer, w, r)
 	})
 
 	fs := http.FileServer(http.Dir("./public"))
 	http.Handle("/", fs)
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	http.ListenAndServe(config.Config["listen"].(string), nil)
 }

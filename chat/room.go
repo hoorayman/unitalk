@@ -1,4 +1,4 @@
-package main
+package chat
 
 // Room define
 type Room struct {

@@ -1,4 +1,4 @@
-package main
+package chat
 
 // WsServer define
 type WsServer struct {
