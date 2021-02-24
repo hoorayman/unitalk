@@ -2,7 +2,7 @@ var app = new Vue({
     el: '#app',
     data: {
       ws: null,
-      serverUrl: "ws://localhost:8080/ws"+window.location.search,
+      serverUrl: "ws://"+window.location.host+"/ws"+window.location.search,
       messages: [],
       newMessage: ""
     },
