@@ -1,4 +1,8 @@
 {
+    "zk":{
+        "path":"/unitalksrvs/",
+        "serverList":[":2181"]
+    },
     "redis":{
         "masterName":"mymaster",
         "sentinelAddrs":[":26379", ":26380", ":26381"]
