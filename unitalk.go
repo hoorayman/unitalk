@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"unitalk/config"
 	"unitalk/handler"
+	"unitalk/logger"
 )
 
 func main() {
@@ -14,5 +15,5 @@ func main() {
 	fs := http.FileServer(http.Dir("./public"))
 	http.Handle("/", fs)
 
-	http.ListenAndServe(config.Config["listen"].(string), nil)
+	logger.Writer.Error(http.ListenAndServe(config.Config["listen"].(string), nil).Error())
 }
