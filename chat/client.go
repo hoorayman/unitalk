@@ -30,16 +30,18 @@ var (
 
 // Client represents the websocket client at the server
 type Client struct {
+	clientID string
 	// The actual websocket connection.
 	conn *websocket.Conn
 	room string
 }
 
 // NewClient constructor
-func NewClient(conn *websocket.Conn, room string) *Client {
+func NewClient(conn *websocket.Conn, room string, clientID string) *Client {
 	return &Client{
-		conn: conn,
-		room: room,
+		clientID: clientID,
+		conn:     conn,
+		room:     room,
 	}
 }
 
@@ -78,14 +80,13 @@ func (client *Client) WritePump() {
 		client.conn.Close()
 		pubsub.Unsubscribe(ctx, client.room)
 	}()
-	sendFromRoom := pubsub.Channel()
+	receiveFromRoom := pubsub.Channel()
 
 	for {
 		select {
-		case message, ok := <-sendFromRoom:
+		case message, ok := <-receiveFromRoom:
 			client.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
-				// The room closed the channel.
 				client.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
@@ -97,10 +98,10 @@ func (client *Client) WritePump() {
 			w.Write([]byte(message.Payload))
 
 			// Attach queued chat messages(if multi msgs) to the current websocket message to reduce system calls
-			n := len(sendFromRoom)
+			n := len(receiveFromRoom)
 			for i := 0; i < n; i++ {
 				w.Write(newline)
-				w.Write([]byte((<-sendFromRoom).Payload))
+				w.Write([]byte((<-receiveFromRoom).Payload))
 			}
 
 			if err := w.Close(); err != nil {

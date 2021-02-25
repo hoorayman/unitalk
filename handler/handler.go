@@ -20,14 +20,17 @@ func ServeWs(w http.ResponseWriter, r *http.Request) {
 	if room == "" {
 		room = "default"
 	}
-
+	clientID := r.URL.Query().Get("clientid")
+	if clientID == "" {
+		clientID = "default"
+	}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		logger.Writer.Error(err.Error(), zap.String("ws", "upgrade fail"))
 		return
 	}
 
-	client := chat.NewClient(conn, room)
+	client := chat.NewClient(conn, room, clientID)
 
 	go client.WritePump()
 	go client.ReadPump()
