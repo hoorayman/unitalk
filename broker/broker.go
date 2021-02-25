@@ -11,13 +11,13 @@ var REDIS *redis.ClusterClient
 
 // init redis
 func init() {
-	conn := config.Config["redis"].(map[string]interface{})
+	redisConf := config.Config["redis"].(map[string]interface{})
 	var sentinel []string
-	for _, v := range conn["sentinelAddrs"].([]interface{}) {
+	for _, v := range redisConf["sentinelAddrs"].([]interface{}) {
 		sentinel = append(sentinel, v.(string))
 	}
 	REDIS = redis.NewFailoverClusterClient(&redis.FailoverOptions{
-		MasterName:     conn["masterName"].(string),
+		MasterName:     redisConf["masterName"].(string),
 		SentinelAddrs:  sentinel,
 		RouteByLatency: true,
 	})
