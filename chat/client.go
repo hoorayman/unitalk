@@ -1,7 +1,9 @@
 package chat
 
 import (
+	"context"
 	"time"
+	"unitalk/broker"
 	"unitalk/logger"
 
 	"github.com/gorilla/websocket"
@@ -19,6 +21,8 @@ const (
 	maxMessageSize = 10000
 )
 
+var ctx = context.Background()
+
 var (
 	newline = []byte{'\n'}
 	space   = []byte{' '}
@@ -28,23 +32,21 @@ var (
 type Client struct {
 	// The actual websocket connection.
 	conn *websocket.Conn
-	room *Room
-	send chan []byte
+	room string
 }
 
 // NewClient constructor
-func NewClient(conn *websocket.Conn, room *Room) *Client {
+func NewClient(conn *websocket.Conn, room string) *Client {
 	return &Client{
 		conn: conn,
 		room: room,
-		send: make(chan []byte, 256),
 	}
 }
 
 // ReadPump method
 func (client *Client) ReadPump() {
 	defer func() {
-		client.disconnect()
+		client.conn.Close()
 	}()
 
 	client.conn.SetReadLimit(maxMessageSize)
@@ -60,20 +62,27 @@ func (client *Client) ReadPump() {
 			}
 			break
 		}
-		client.room.broadcast <- message
+		err = broker.REDIS.Publish(ctx, client.room, message).Err()
+		if err != nil {
+			logger.Writer.Error(err.Error(), zap.String("redis", "pub"))
+		}
 	}
 }
 
 // WritePump method
 func (client *Client) WritePump() {
 	ticker := time.NewTicker(pingPeriod)
+	pubsub := broker.REDIS.Subscribe(ctx, client.room)
 	defer func() {
 		ticker.Stop()
 		client.conn.Close()
+		pubsub.Unsubscribe(ctx, client.room)
 	}()
+	sendFromRoom := pubsub.Channel()
+
 	for {
 		select {
-		case message, ok := <-client.send:
+		case message, ok := <-sendFromRoom:
 			client.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				// The room closed the channel.
@@ -85,13 +94,13 @@ func (client *Client) WritePump() {
 			if err != nil {
 				return
 			}
-			w.Write(message)
+			w.Write([]byte(message.Payload))
 
-			// Attach queued chat messages to the current websocket message.
-			n := len(client.send)
+			// Attach queued chat messages(if multi msgs) to the current websocket message to reduce system calls
+			n := len(sendFromRoom)
 			for i := 0; i < n; i++ {
 				w.Write(newline)
-				w.Write(<-client.send)
+				w.Write([]byte((<-sendFromRoom).Payload))
 			}
 
 			if err := w.Close(); err != nil {
@@ -104,10 +113,4 @@ func (client *Client) WritePump() {
 			}
 		}
 	}
-}
-
-func (client *Client) disconnect() {
-	client.room.unregister <- client
-	close(client.send)
-	client.conn.Close()
 }

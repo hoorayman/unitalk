@@ -15,10 +15,10 @@ var upgrader = websocket.Upgrader{
 }
 
 // ServeWs handles websocket requests from clients requests.
-func ServeWs(wsServer *chat.WsServer, w http.ResponseWriter, r *http.Request) {
-	roomName := r.URL.Query().Get("room")
-	if roomName == "" {
-		roomName = "default"
+func ServeWs(w http.ResponseWriter, r *http.Request) {
+	room := r.URL.Query().Get("room")
+	if room == "" {
+		room = "default"
 	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -27,16 +27,8 @@ func ServeWs(wsServer *chat.WsServer, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var room *chat.Room
-	room = wsServer.FindRoomByName(roomName)
-	if room == nil {
-		room = wsServer.CreateRoom(roomName)
-	}
-
 	client := chat.NewClient(conn, room)
 
 	go client.WritePump()
 	go client.ReadPump()
-
-	room.TriggerRegisterClientInRoome(client)
 }

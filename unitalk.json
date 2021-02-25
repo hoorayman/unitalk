@@ -1,3 +1,7 @@
 {
+    "redis":{
+        "masterName":"mymaster",
+        "sentinelAddrs":[":26379", ":26380", ":26381"]
+    },
     "listen":":8080"
 }

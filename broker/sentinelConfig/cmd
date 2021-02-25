@@ -1,0 +1,4 @@
+redis-server ./26379.conf --sentinel
+redis-server ./26380.conf --sentinel
+redis-server ./26381.conf --sentinel
+
