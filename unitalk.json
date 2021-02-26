@@ -7,5 +7,9 @@
         "masterName":"mymaster",
         "sentinelAddrs":[":26379", ":26380", ":26381"]
     },
-    "listen":":8180"
+    "kafka":{
+        "topic":"source-msg1",
+        "serverList":["192.168.96.135:9092"]
+    },
+    "listen":"192.168.96.135:8180"
 }

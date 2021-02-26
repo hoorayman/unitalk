@@ -2,10 +2,13 @@ package chat
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 	"unitalk/broker"
 	"unitalk/logger"
+	"unitalk/mq"
 
+	"github.com/Shopify/sarama"
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 )
@@ -45,6 +48,18 @@ func NewClient(conn *websocket.Conn, room string, clientID string) *Client {
 	}
 }
 
+var kafkaMsg = map[string]interface{}{
+	"schema": map[string]interface{}{
+		"type": "struct",
+		"fields": []interface{}{
+			map[string]interface{}{"type": "string", "optional": false, "field": "room"},
+			map[string]interface{}{"type": "string", "optional": false, "field": "client"},
+			map[string]interface{}{"type": "string", "optional": false, "field": "msg"},
+			map[string]interface{}{"type": "int64", "optional": false, "name": "org.apache.kafka.connect.data.Timestamp", "field": "ts"},
+		},
+		"optional": false, "name": "msg"},
+}
+
 // ReadPump method
 func (client *Client) ReadPump() {
 	defer func() {
@@ -68,6 +83,7 @@ func (client *Client) ReadPump() {
 		if err != nil {
 			logger.Writer.Error(err.Error(), zap.String("redis", "pub"))
 		}
+		client.saveMsg(message)
 	}
 }
 
@@ -112,6 +128,27 @@ func (client *Client) WritePump() {
 			if err := client.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
+		}
+	}
+}
+
+func (client *Client) saveMsg(msg []byte) {
+	payload := map[string]interface{}{
+		"room":   client.room,
+		"client": client.clientID,
+		"msg":    string(msg),
+		"ts":     int64(time.Nanosecond) * time.Now().UnixNano() / int64(time.Millisecond), // ms
+	}
+	kafkaMsg["payload"] = payload
+	msgToSend, err := json.Marshal(kafkaMsg)
+	if err == nil {
+		kmsg := &sarama.ProducerMessage{}
+		kmsg.Topic = mq.TOPIC
+		kmsg.Value = sarama.StringEncoder(msgToSend)
+
+		_, _, err := mq.KAFKAPRODUCER.SendMessage(kmsg)
+		if err != nil {
+			logger.Writer.Error(err.Error(), zap.String("kafka", "producer error"))
 		}
 	}
 }

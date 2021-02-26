@@ -3,6 +3,7 @@ module unitalk
 go 1.13
 
 require (
+	github.com/Shopify/sarama v1.28.0
 	github.com/go-redis/redis/v8 v8.6.0
 	github.com/go-zookeeper/zk v1.0.2
 	github.com/gorilla/websocket v1.4.2
