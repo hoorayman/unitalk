@@ -1,0 +1,40 @@
+create database ut;
+
+CREATE TABLE public.msg
+(
+  id integer NOT NULL DEFAULT nextval('msg_id_seq'::regclass),
+  room character varying(128),
+  client character varying(128),
+  msg character varying(512),
+  ts timestamp with time zone,
+  CONSTRAINT msg_pkey PRIMARY KEY (id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE public.msg
+  OWNER TO postgres;
+
+CREATE SEQUENCE public.msg_id_seq
+  INCREMENT 1
+  MINVALUE 1
+  MAXVALUE 9223372036854775807
+  START 6
+  CACHE 1;
+ALTER TABLE public.msg_id_seq
+  OWNER TO postgres;
+
+curl -X POST -H "Content-Type: application/json" -i 'http://hoo:8083/connectors' \
+-d '{"name":"sink-msg1","config":{
+"connector.class":"io.confluent.connect.jdbc.JdbcSinkConnector",
+"connection.url":"jdbc:postgresql://127.0.0.1:5432/ut",
+"connection.user":"postgres",
+"connection.password":"postgres",
+"topics":"source-msg1",
+"auto.create":false,
+"insert.mode":"insert",
+"table.name.format":"msg"}}'
+
+example msg:
+{"schema":{"type":"struct","fields":[{"type":"string","optional":false,"field":"room"},{"type":"string","optional":false,"field":"client"},{"type":"string","optional":false,"field":"msg"},{"type":"int64","optional":false,"name":"org.apache.kafka.connect.data.Timestamp","version":1,"field":"ts"}],"optional":false,"name":"msg"},"payload":{"room":"36","client":"def","msg":"xxx","ts":1611485803227}}
+
